@@ -16,6 +16,7 @@ var Board = (function () {
         this.HEIGHT = 8;
     }
     Board.prototype.initGame = function () {
+        this.playerTurn = Side_1.Side.WHITE;
         this.board = [];
         for (var x = 0; x < this.HEIGHT; x++) {
             this.board[x] = [];
@@ -73,16 +74,42 @@ var Board = (function () {
         }
     };
     Board.prototype.getField = function (x, y) {
+        if (this.board[x] == null) {
+            return null;
+        }
+        if (this.board[x][y] == null) {
+            return null;
+        }
         return this.board[x][y];
     };
-    Board.prototype.move = function (from, to) {
+    Board.prototype.selectFigure = function (x, y) {
+        var field = this.getField(x, y);
+        if (field != null && !field.isEmpty()) {
+            var figure = field.getFigure();
+            if (figure.side == this.playerTurn) {
+                this.selectedFigure = figure;
+            }
+        }
+    };
+    Board.prototype.move = function (to) {
+        var from;
+        if (this.selectedFigure != null) {
+            from = this.selectedFigure.field;
+        }
+        else {
+            return false;
+        }
         if (this.isValidMove(from, to)) {
             var figure = this.board[from.x][from.y].getFigure();
             this.board[from.x][from.y].setFigure(null);
             this.board[to.x][to.y].setFigure(figure);
+            this.switchTurn();
             return true;
         }
         return false;
+    };
+    Board.prototype.switchTurn = function () {
+        this.playerTurn = Side_1.Side.WHITE ? Side_1.Side.BLACK : Side_1.Side.WHITE;
     };
     Board.prototype.isValidMove = function (from, to) {
         if (from.x > this.WIDTH - 1 || from.x < 0 || to.x > this.WIDTH - 1 || to.x < 0 || from.y > this.HEIGHT - 1 || from.y < 0 || to.y > this.HEIGHT - 1 || to.y < 0) {
@@ -93,13 +120,20 @@ var Board = (function () {
         if (figure.type == FigureType_1.FigureType.TOWER) {
             validFields = this.getValidTowerMoves(from);
         }
+        if (figure.type == FigureType_1.FigureType.HORSE) {
+            validFields = this.getValidHorseMoves(from);
+        }
+        else {
+            //TODO: remove this!!!!! implement other Figure validations
+            return true;
+        }
         //check if validFields contains to-Field
         console.log(validFields);
         for (var i = 0; i < validFields.length; i++) {
             if (validFields[i].equals(to))
                 return true;
         }
-        return true;
+        return false;
     };
     Board.prototype.getValidTowerMoves = function (from) {
         var validFields = [];
@@ -110,7 +144,9 @@ var Board = (function () {
                 validFields[validFields.length] = actField;
             }
             else {
-                validFields[validFields.length] = actField;
+                if (actField.getFigure().side != this.playerTurn) {
+                    validFields[validFields.length] = actField;
+                }
                 break;
             }
         }
@@ -121,7 +157,9 @@ var Board = (function () {
                 validFields[validFields.length] = actField;
             }
             else {
-                validFields[validFields.length] = actField;
+                if (actField.getFigure().side != this.playerTurn) {
+                    validFields[validFields.length] = actField;
+                }
                 break;
             }
         }
@@ -132,7 +170,9 @@ var Board = (function () {
                 validFields[validFields.length] = actField;
             }
             else {
-                validFields[validFields.length] = actField;
+                if (actField.getFigure().side != this.playerTurn) {
+                    validFields[validFields.length] = actField;
+                }
                 break;
             }
         }
@@ -143,14 +183,41 @@ var Board = (function () {
                 validFields[validFields.length] = actField;
             }
             else {
-                validFields[validFields.length] = actField;
+                if (actField.getFigure().side != this.playerTurn) {
+                    validFields[validFields.length] = actField;
+                }
                 break;
             }
         }
         return validFields;
     };
+    Board.prototype.getValidHorseMoves = function (from) {
+        var validFields = [];
+        validateForField(this.getField(from.x + 2, from.y - 1), this.playerTurn);
+        validateForField(this.getField(from.x + 2, from.y + 1), this.playerTurn);
+        validateForField(this.getField(from.x - 2, from.y - 1), this.playerTurn);
+        validateForField(this.getField(from.x - 2, from.y + 1), this.playerTurn);
+        validateForField(this.getField(from.x - 1, from.y - 2), this.playerTurn);
+        validateForField(this.getField(from.x + 1, from.y - 2), this.playerTurn);
+        validateForField(this.getField(from.x - 1, from.y + 2), this.playerTurn);
+        validateForField(this.getField(from.x + 1, from.y + 2), this.playerTurn);
+        function validateForField(field, playerTurn) {
+            if (field != null) {
+                if (field.isEmpty()) {
+                    validFields[validFields.length] = field;
+                }
+                else {
+                    if (field.getFigure().side != playerTurn) {
+                        validFields[validFields.length] = field;
+                    }
+                }
+            }
+        }
+        return validFields;
+    };
     Board.prototype.logBoard = function () {
-        var print = "";
+        var print = "Player: " + (this.playerTurn == Side_1.Side.WHITE ? "White" : "Black") + "\n";
+        print += "Selected: " + (this.selectedFigure != null ? "" + this.selectedFigure.x + "|" + this.selectedFigure.y : "not selected") + "\n";
         for (var i = 0; i < this.board.length; i++) {
             for (var j = 0; j < this.board[i].length; j++) {
                 var figure = this.board[i][j].getFigure();
