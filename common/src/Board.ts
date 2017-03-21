@@ -5,6 +5,9 @@ import {Figure} from "./Figure";
 import {FigureType} from "./FigureType";
 import {Field} from "./Field";
 import {Side} from "./Side";
+import {GameState} from "./GameState";
+import {userInfo} from "os";
+import {platform} from "os";
 /**
  * Created by Philipp on 19.03.2017.
  */
@@ -13,14 +16,16 @@ export class Board {
 
     private board: Field[][];
     private playerTurn: Side;
-    private selectedFigure : Figure;
+    private selectedFigure: Figure;
+    private gameState: GameState;
 
     private WIDTH: number = 8;
     private HEIGHT: number = 8;
 
-    initGame() {
+    public initGame(): void {
 
         this.playerTurn = Side.WHITE;
+        this.gameState = GameState.NORMAL;
 
         this.board = [];
 
@@ -97,7 +102,7 @@ export class Board {
         }
     }
 
-    getField(x: number, y: number): Field {
+    public getField(x: number, y: number): Field {
         if (this.board[x] == null) {
             return null;
         }
@@ -109,18 +114,18 @@ export class Board {
         return this.board[x][y];
     }
 
-    selectFigure(x : number , y : number) {
-        let field = this.getField(x,y);
+    public selectFigure(x: number, y: number): void {
+        let field = this.getField(x, y);
         if (field != null && !field.isEmpty()) {
-            let figure : Figure = field.getFigure();
+            let figure: Figure = field.getFigure();
             if (figure.side == this.playerTurn) {
                 this.selectedFigure = figure;
             }
         }
     }
 
-    move(to: Field) {
-        let from : Field;
+    public move(to: Field): boolean {
+        let from: Field;
         if (this.selectedFigure != null) {
             from = this.selectedFigure.field;
         } else {
@@ -128,51 +133,66 @@ export class Board {
         }
 
         if (this.isValidMove(from, to)) {
-            let figure = this.board[from.x][from.y].getFigure();
             this.board[from.x][from.y].setFigure(null);
-            this.board[to.x][to.y].setFigure(figure);
+            this.board[to.x][to.y].setFigure(this.selectedFigure);
+            this.selectedFigure = null;
             this.switchTurn();
             return true;
         }
         return false;
     }
 
-    private switchTurn() {
-        this.playerTurn = Side.WHITE ? Side.BLACK : Side.WHITE;
-    }
-
-    isValidMove(from: Field, to: Field) {
+    public isValidMove(from: Field, to: Field): boolean {
 
         if (from.x > this.WIDTH - 1 || from.x < 0 || to.x > this.WIDTH - 1 || to.x < 0 || from.y > this.HEIGHT - 1 || from.y < 0 || to.y > this.HEIGHT - 1 || to.y < 0) {
             return false;
         }
 
-        let figure = this.board[from.x][from.y].getFigure();
+        let figure = from.getFigure();
         let validFields: Field[] = [];
 
-        if (figure.type == FigureType.TOWER) {
-            validFields = this.getValidTowerMoves(from);
+        switch (figure.type) {
+            case FigureType.TOWER :
+                validFields = this.getValidTowerMoves(from);
+                break;
+            case FigureType.HORSE :
+                validFields = this.getValidHorseMoves(from);
+                break;
+            case FigureType.RUNNER :
+                validFields = this.getValidRunnerMoves(from);
+                break;
+            default :
+                return false;
         }
 
-        if (figure.type == FigureType.HORSE) {
-            validFields = this.getValidHorseMoves(from);
-        } else {
-            //TODO: remove this!!!!! implement other Figure validations
-            return true;
+        return validFields.indexOf(to) > -1;
+    }
+
+    public getPossibleMovesFor(field: Field): Field[] {
+        if (field.isEmpty()) return [];
+
+        let figure: Figure = field.getFigure();
+        let ret: Field[] = [];
+
+        switch (figure.type) {
+            case FigureType.TOWER :
+                ret = this.getValidTowerMoves(field);
+                break;
+            case FigureType.HORSE :
+                ret = this.getValidHorseMoves(field);
+                break;
+            case FigureType.RUNNER :
+                ret = this.getValidRunnerMoves(field);
+                break;
+            default :
+                return [];
         }
 
-
-        //check if validFields contains to-Field
-        console.log(validFields);
-        for (let i = 0; i < validFields.length; i++) {
-            if (validFields[i].equals(to)) return true;
-        }
-
-        return false;
+        return ret;
 
     }
 
-    getValidTowerMoves(from: Field) {
+    public getValidTowerMoves(from: Field): Field[] {
         let validFields: Field[] = [];
         //add all right field
         for (let i = from.x + 1; i < this.WIDTH; i++) {
@@ -180,7 +200,7 @@ export class Board {
             if (actField.isEmpty()) {
                 validFields[validFields.length] = actField;
             } else {
-                if (actField.getFigure().side != this.playerTurn) {
+                if (this.isEnemyFigure(actField.getFigure())) {
                     validFields[validFields.length] = actField;
                 }
                 break;
@@ -193,7 +213,7 @@ export class Board {
             if (actField.isEmpty()) {
                 validFields[validFields.length] = actField;
             } else {
-                if (actField.getFigure().side != this.playerTurn) {
+                if (this.isEnemyFigure(actField.getFigure())) {
                     validFields[validFields.length] = actField;
                 }
                 break;
@@ -206,7 +226,7 @@ export class Board {
             if (actField.isEmpty()) {
                 validFields[validFields.length] = actField;
             } else {
-                if (actField.getFigure().side != this.playerTurn) {
+                if (this.isEnemyFigure(actField.getFigure())) {
                     validFields[validFields.length] = actField;
                 }
                 break;
@@ -219,7 +239,7 @@ export class Board {
             if (actField.isEmpty()) {
                 validFields[validFields.length] = actField;
             } else {
-                if (actField.getFigure().side != this.playerTurn) {
+                if (this.isEnemyFigure(actField.getFigure())) {
                     validFields[validFields.length] = actField;
                 }
                 break;
@@ -230,25 +250,25 @@ export class Board {
         return validFields;
     }
 
-    getValidHorseMoves(from:Field) {
+    public getValidHorseMoves(from: Field): Field[] {
 
-        let validFields :Field[] = [];
+        let validFields: Field[] = [];
 
-        validateForField(this.getField(from.x+2,from.y-1),this.playerTurn);
-        validateForField(this.getField(from.x+2,from.y+1),this.playerTurn);
-        validateForField(this.getField(from.x-2,from.y-1),this.playerTurn);
-        validateForField(this.getField(from.x-2,from.y+1),this.playerTurn);
-        validateForField(this.getField(from.x-1,from.y-2),this.playerTurn);
-        validateForField(this.getField(from.x+1,from.y-2),this.playerTurn);
-        validateForField(this.getField(from.x-1,from.y+2),this.playerTurn);
-        validateForField(this.getField(from.x+1,from.y+2),this.playerTurn);
+        validateForField(this.getField(from.x + 2, from.y - 1), this.playerTurn);
+        validateForField(this.getField(from.x + 2, from.y + 1), this.playerTurn);
+        validateForField(this.getField(from.x - 2, from.y - 1), this.playerTurn);
+        validateForField(this.getField(from.x - 2, from.y + 1), this.playerTurn);
+        validateForField(this.getField(from.x - 1, from.y - 2), this.playerTurn);
+        validateForField(this.getField(from.x + 1, from.y - 2), this.playerTurn);
+        validateForField(this.getField(from.x - 1, from.y + 2), this.playerTurn);
+        validateForField(this.getField(from.x + 1, from.y + 2), this.playerTurn);
 
-        function validateForField(field :Field,playerTurn : Side) {
+        function validateForField(field: Field, playerTurn: Side) {
             if (field != null) {
                 if (field.isEmpty()) {
                     validFields[validFields.length] = field;
                 } else {
-                    if (field.getFigure().side != playerTurn) {
+                    if (this.isEnemyFigure(field.getFigure())) {
                         validFields[validFields.length] = field;
                     }
                 }
@@ -259,9 +279,162 @@ export class Board {
         return validFields;
     }
 
-    logBoard() {
+    public getValidRunnerMoves(from: Field): Field[] {
+
+        let ret: Field[] = [];
+
+        let actX = from.x;
+        let actY = from.y;
+        let field = this.getField(actX + 1, actY + 1);
+        while (field != null) {
+            if (field.isEmpty()) {
+                ret.push(field);
+                actX++;
+                actY++;
+                field = this.getField(actX, actY);
+            } else {
+                if (this.isEnemyFigure(field.getFigure())) {
+                    ret[ret.length] = field;
+                }
+                break;
+            }
+        }
+
+        actX = from.x;
+        actY = from.y;
+        field = this.getField(actX - 1, actY - 1);
+        while (field != null) {
+            if (field.isEmpty()) {
+                ret[ret.length] = field;
+                actX--;
+                actY--;
+                field = this.getField(actX, actY);
+            } else {
+                if (this.isEnemyFigure(field.getFigure())) {
+                    ret[ret.length] = field;
+                }
+                break;
+            }
+        }
+
+        actX = from.x;
+        actY = from.y;
+        field = this.getField(actX + 1, actY - 1);
+        while (field != null) {
+            if (field.isEmpty()) {
+                ret[ret.length] = field;
+                actX++;
+                actY--;
+                field = this.getField(actX, actY);
+            } else {
+                if (this.isEnemyFigure(field.getFigure())) {
+                    ret[ret.length] = field;
+                }
+                break;
+            }
+        }
+
+        actX = from.x;
+        actY = from.y;
+        field = this.getField(actX - 1, actY + 1);
+        while (field != null) {
+            if (field.isEmpty()) {
+                ret[ret.length] = field;
+                actX--;
+                actY++;
+                field = this.getField(actX, actY);
+            } else {
+                if (this.isEnemyFigure(field.getFigure())) {
+                    ret[ret.length] = field;
+                }
+                break;
+            }
+        }
+
+        return ret;
+    }
+
+    public getValidQueenMoves(from: Field): Field[] {
+        return this.getValidRunnerMoves(from).concat(this.getValidTowerMoves(from));
+    }
+
+    public getValidKingMoves(from: Field): Field[] {
+        let ret: Field[] = [];
+        let possibleMoves: Field[] = [
+            this.getField(from.x + 1, from.y),
+            this.getField(from.x - 1, from.y),
+            this.getField(from.x, from.y + 1),
+            this.getField(from.x, from.y - 1),
+            this.getField(from.x - 1, from.y - 1),
+            this.getField(from.x - 1, from.y + 1),
+            this.getField(from.x + 1, from.y + 1),
+            this.getField(from.x + 1, from.y - 1)
+        ];
+
+        possibleMoves.forEach(field => {
+            if (field != null) {
+                if (field.isEmpty()) {
+                    ret[ret.length] = field;
+                } else {
+                    if (!(field.getFigure().side == this.playerTurn)) {
+                        ret[ret.length] = field;
+                    }
+                }
+            }
+        });
+
+        return ret;
+    }
+
+    public getValidFarmerMoves(from: Field): Field[] {
+        let ret: Field[] = [];
+
+
+        if (this.playerTurn == Side.WHITE) {
+
+            if (this.getField(from.x - 1, from.y) != null && this.getField(from.x - 1, from.y).isEmpty()) {
+                ret.push(this.getField(from.x - 1, from.y));
+            }
+
+            if (this.getField(from.x - 1, from.y + 1) != null && !(this.getField(from.x - 1, from.y + 1).isEmpty())) {
+                if (this.isEnemyFigure(this.getField(from.x - 1, from.y + 1).getFigure())) {
+                    ret.push(this.getField(from.x - 1, from.y + 1));
+                }
+            }
+
+            if (this.getField(from.x - 1, from.y - 1) != null && !(this.getField(from.x - 1, from.y - 1).isEmpty())) {
+                if (this.isEnemyFigure(this.getField(from.x - 1, from.y - 1).getFigure())) {
+                    ret.push(this.getField(from.x - 1, from.y - 1));
+                }
+            }
+        } else {
+
+            if (this.getField(from.x + 1, from.y) != null && this.getField(from.x + 1, from.y).isEmpty()) {
+                ret.push(this.getField(from.x + 1, from.y));
+            }
+
+            if (this.getField(from.x + 1, from.y + 1) != null && !(this.getField(from.x + 1, from.y + 1).isEmpty())) {
+                if (this.isEnemyFigure(this.getField(from.x - 1, from.y + 1).getFigure())) {
+                    ret.push(this.getField(from.x - 1, from.y + 1));
+                }
+            }
+
+            if (this.getField(from.x + 1, from.y - 1) != null && !(this.getField(from.x + 1, from.y - 1).isEmpty())) {
+                if (this.isEnemyFigure(this.getField(from.x - 1, from.y - 1).getFigure())) {
+                    ret.push(this.getField(from.x - 1, from.y - 1));
+                }
+            }
+        }
+
+
+        return ret;
+    }
+
+
+    //public helpers
+    public logBoard(): void {
         let print = "Player: " + (this.playerTurn == Side.WHITE ? "White" : "Black") + "\n";
-        print += "Selected: " + (this.selectedFigure != null ? ""+this.selectedFigure.x + "|"+this.selectedFigure.y : "not selected") + "\n";
+        print += "Selected: " + (this.selectedFigure != null ? "" + this.selectedFigure.x + "|" + this.selectedFigure.y : "not selected") + "\n";
 
         for (let i = 0; i < this.board.length; i++) {
 
@@ -309,7 +482,7 @@ export class Board {
 
     }
 
-    logTeam() {
+    public logTeam(): void {
         let print = "";
 
         for (let i = 0; i < this.board.length; i++) {
@@ -335,7 +508,7 @@ export class Board {
         console.log(print);
     }
 
-    logMeta() {
+    public logMeta(): void {
         let print = "";
 
         for (let i = 0; i < this.board.length; i++) {
@@ -353,6 +526,96 @@ export class Board {
         }
 
         console.log(print);
+    }
+
+    public replace(from: Field, to: Field) {
+        let fig: Figure = this.getField(from.x, from.y).getFigure();
+        this.board[from.x][from.y].setFigure(null);
+        this.board[to.x][to.y].setFigure(fig);
+    }
+
+
+    //private helpers
+    private switchTurn(): void {
+        this.playerTurn = Side.WHITE ? Side.BLACK : Side.WHITE;
+    }
+
+    private isEnemyFigure(figure: Figure): boolean {
+        return this.playerTurn != figure.side;
+    }
+
+    private omputeGameState(): void {
+        let king : Field = this.getKingField(this.playerTurn);
+        let checkingFields : Field[] = this.getCheckingFieldsFor(king);
+
+        if (checkingFields.length<1) {
+            this.playerTurn == Side.WHITE ? this.gameState = GameState.CHECK_WHITE : this.gameState = GameState.CHECK_BLACK;
+        } else {
+            this.gameState = GameState.NORMAL;
+        }
+
+        //TODO:check for checkmate
+
+    }
+
+    private getCheckingFieldsFor(king: Field): Field[] {
+        let ret : Field[] = [];
+
+        let horseMoves: Field[] = this.getValidHorseMoves(king);
+        ret.concat(this.getFieldsForFigureType(horseMoves,FigureType.HORSE));
+
+        let towerMoves : Field[] = this.getValidTowerMoves(king);
+        ret.concat(this.getFieldsForFigureType(towerMoves,FigureType.TOWER));
+
+        let runnerMoves : Field[] = this.getValidRunnerMoves(king);
+        ret.concat(this.getFieldsForFigureType(runnerMoves,FigureType.RUNNER));
+
+        let queenMoves : Field[] = this.getValidQueenMoves(king);
+        ret.concat(this.getFieldsForFigureType(queenMoves,FigureType.QUEEN));
+
+        let farmerMoves : Field [];
+
+        if (this.playerTurn == Side.WHITE) {
+            farmerMoves.push(this.getField(king.x-1,king.y-1));
+            farmerMoves.push(this.getField(king.x-1,king.y+1));
+        } else {
+            farmerMoves.push(this.getField(king.x+1,king.y-1));
+            farmerMoves.push(this.getField(king.x+1,king.y+1));
+        }
+        ret.concat(this.getFieldsForFigureType(farmerMoves,FigureType.FARMER));
+
+        return ret;
+
+    }
+
+    /**
+     * checks if one of the given fields contains a figure of the given figure type
+     */
+    private getFieldsForFigureType(fields: Field[], figureType: FigureType) {
+        let ret : Field[] = [];
+
+        fields.forEach(field => {
+           if (field != null && !field.isEmpty()) {
+               if (field.getFigure().type == figureType && field.getFigure().side != this.playerTurn) {
+                   ret.push(field);
+               }
+           }
+        });
+
+        return ret;
+    }
+
+    private getKingField(side: Side): Field {
+        for (let i = 0; i < this.board.length; i++) {
+            for (let j = 0; j < this.board[i].length; j++) {
+                if (!(this.board[i][j].isEmpty())) {
+                    if ((this.board[i][j].getFigure().type == FigureType.KING) && (this.board[i][j].getFigure().side == side)) {
+                        return this.getField(i,j);
+                    }
+                }
+            }
+        }
+        return null;
     }
 
 }

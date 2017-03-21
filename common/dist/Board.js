@@ -7,6 +7,7 @@ var Figure_1 = require("./Figure");
 var FigureType_1 = require("./FigureType");
 var Field_1 = require("./Field");
 var Side_1 = require("./Side");
+var GameState_1 = require("./GameState");
 /**
  * Created by Philipp on 19.03.2017.
  */
@@ -17,6 +18,7 @@ var Board = (function () {
     }
     Board.prototype.initGame = function () {
         this.playerTurn = Side_1.Side.WHITE;
+        this.gameState = GameState_1.GameState.NORMAL;
         this.board = [];
         for (var x = 0; x < this.HEIGHT; x++) {
             this.board[x] = [];
@@ -100,40 +102,54 @@ var Board = (function () {
             return false;
         }
         if (this.isValidMove(from, to)) {
-            var figure = this.board[from.x][from.y].getFigure();
             this.board[from.x][from.y].setFigure(null);
-            this.board[to.x][to.y].setFigure(figure);
+            this.board[to.x][to.y].setFigure(this.selectedFigure);
+            this.selectedFigure = null;
             this.switchTurn();
             return true;
         }
         return false;
     };
-    Board.prototype.switchTurn = function () {
-        this.playerTurn = Side_1.Side.WHITE ? Side_1.Side.BLACK : Side_1.Side.WHITE;
-    };
     Board.prototype.isValidMove = function (from, to) {
         if (from.x > this.WIDTH - 1 || from.x < 0 || to.x > this.WIDTH - 1 || to.x < 0 || from.y > this.HEIGHT - 1 || from.y < 0 || to.y > this.HEIGHT - 1 || to.y < 0) {
             return false;
         }
-        var figure = this.board[from.x][from.y].getFigure();
+        var figure = from.getFigure();
         var validFields = [];
-        if (figure.type == FigureType_1.FigureType.TOWER) {
-            validFields = this.getValidTowerMoves(from);
+        switch (figure.type) {
+            case FigureType_1.FigureType.TOWER:
+                validFields = this.getValidTowerMoves(from);
+                break;
+            case FigureType_1.FigureType.HORSE:
+                validFields = this.getValidHorseMoves(from);
+                break;
+            case FigureType_1.FigureType.RUNNER:
+                validFields = this.getValidRunnerMoves(from);
+                break;
+            default:
+                return false;
         }
-        if (figure.type == FigureType_1.FigureType.HORSE) {
-            validFields = this.getValidHorseMoves(from);
+        return validFields.indexOf(to) > -1;
+    };
+    Board.prototype.getPossibleMovesFor = function (field) {
+        if (field.isEmpty())
+            return [];
+        var figure = field.getFigure();
+        var ret = [];
+        switch (figure.type) {
+            case FigureType_1.FigureType.TOWER:
+                ret = this.getValidTowerMoves(field);
+                break;
+            case FigureType_1.FigureType.HORSE:
+                ret = this.getValidHorseMoves(field);
+                break;
+            case FigureType_1.FigureType.RUNNER:
+                ret = this.getValidRunnerMoves(field);
+                break;
+            default:
+                return [];
         }
-        else {
-            //TODO: remove this!!!!! implement other Figure validations
-            return true;
-        }
-        //check if validFields contains to-Field
-        console.log(validFields);
-        for (var i = 0; i < validFields.length; i++) {
-            if (validFields[i].equals(to))
-                return true;
-        }
-        return false;
+        return ret;
     };
     Board.prototype.getValidTowerMoves = function (from) {
         var validFields = [];
@@ -144,7 +160,7 @@ var Board = (function () {
                 validFields[validFields.length] = actField;
             }
             else {
-                if (actField.getFigure().side != this.playerTurn) {
+                if (this.isEnemyFigure(actField.getFigure())) {
                     validFields[validFields.length] = actField;
                 }
                 break;
@@ -157,7 +173,7 @@ var Board = (function () {
                 validFields[validFields.length] = actField;
             }
             else {
-                if (actField.getFigure().side != this.playerTurn) {
+                if (this.isEnemyFigure(actField.getFigure())) {
                     validFields[validFields.length] = actField;
                 }
                 break;
@@ -170,7 +186,7 @@ var Board = (function () {
                 validFields[validFields.length] = actField;
             }
             else {
-                if (actField.getFigure().side != this.playerTurn) {
+                if (this.isEnemyFigure(actField.getFigure())) {
                     validFields[validFields.length] = actField;
                 }
                 break;
@@ -183,7 +199,7 @@ var Board = (function () {
                 validFields[validFields.length] = actField;
             }
             else {
-                if (actField.getFigure().side != this.playerTurn) {
+                if (this.isEnemyFigure(actField.getFigure())) {
                     validFields[validFields.length] = actField;
                 }
                 break;
@@ -207,7 +223,7 @@ var Board = (function () {
                     validFields[validFields.length] = field;
                 }
                 else {
-                    if (field.getFigure().side != playerTurn) {
+                    if (this.isEnemyFigure(field.getFigure())) {
                         validFields[validFields.length] = field;
                     }
                 }
@@ -215,6 +231,143 @@ var Board = (function () {
         }
         return validFields;
     };
+    Board.prototype.getValidRunnerMoves = function (from) {
+        var ret = [];
+        var actX = from.x;
+        var actY = from.y;
+        var field = this.getField(actX + 1, actY + 1);
+        while (field != null) {
+            if (field.isEmpty()) {
+                ret.push(field);
+                actX++;
+                actY++;
+                field = this.getField(actX, actY);
+            }
+            else {
+                if (this.isEnemyFigure(field.getFigure())) {
+                    ret[ret.length] = field;
+                }
+                break;
+            }
+        }
+        actX = from.x;
+        actY = from.y;
+        field = this.getField(actX - 1, actY - 1);
+        while (field != null) {
+            if (field.isEmpty()) {
+                ret[ret.length] = field;
+                actX--;
+                actY--;
+                field = this.getField(actX, actY);
+            }
+            else {
+                if (this.isEnemyFigure(field.getFigure())) {
+                    ret[ret.length] = field;
+                }
+                break;
+            }
+        }
+        actX = from.x;
+        actY = from.y;
+        field = this.getField(actX + 1, actY - 1);
+        while (field != null) {
+            if (field.isEmpty()) {
+                ret[ret.length] = field;
+                actX++;
+                actY--;
+                field = this.getField(actX, actY);
+            }
+            else {
+                if (this.isEnemyFigure(field.getFigure())) {
+                    ret[ret.length] = field;
+                }
+                break;
+            }
+        }
+        actX = from.x;
+        actY = from.y;
+        field = this.getField(actX - 1, actY + 1);
+        while (field != null) {
+            if (field.isEmpty()) {
+                ret[ret.length] = field;
+                actX--;
+                actY++;
+                field = this.getField(actX, actY);
+            }
+            else {
+                if (this.isEnemyFigure(field.getFigure())) {
+                    ret[ret.length] = field;
+                }
+                break;
+            }
+        }
+        return ret;
+    };
+    Board.prototype.getValidQueenMoves = function (from) {
+        return this.getValidRunnerMoves(from).concat(this.getValidTowerMoves(from));
+    };
+    Board.prototype.getValidKingMoves = function (from) {
+        var _this = this;
+        var ret = [];
+        var possibleMoves = [
+            this.getField(from.x + 1, from.y),
+            this.getField(from.x - 1, from.y),
+            this.getField(from.x, from.y + 1),
+            this.getField(from.x, from.y - 1),
+            this.getField(from.x - 1, from.y - 1),
+            this.getField(from.x - 1, from.y + 1),
+            this.getField(from.x + 1, from.y + 1),
+            this.getField(from.x + 1, from.y - 1)
+        ];
+        possibleMoves.forEach(function (field) {
+            if (field != null) {
+                if (field.isEmpty()) {
+                    ret[ret.length] = field;
+                }
+                else {
+                    if (!(field.getFigure().side == _this.playerTurn)) {
+                        ret[ret.length] = field;
+                    }
+                }
+            }
+        });
+        return ret;
+    };
+    Board.prototype.getValidFarmerMoves = function (from) {
+        var ret = [];
+        if (this.playerTurn == Side_1.Side.WHITE) {
+            if (this.getField(from.x - 1, from.y) != null && this.getField(from.x - 1, from.y).isEmpty()) {
+                ret.push(this.getField(from.x - 1, from.y));
+            }
+            if (this.getField(from.x - 1, from.y + 1) != null && !(this.getField(from.x - 1, from.y + 1).isEmpty())) {
+                if (this.isEnemyFigure(this.getField(from.x - 1, from.y + 1).getFigure())) {
+                    ret.push(this.getField(from.x - 1, from.y + 1));
+                }
+            }
+            if (this.getField(from.x - 1, from.y - 1) != null && !(this.getField(from.x - 1, from.y - 1).isEmpty())) {
+                if (this.isEnemyFigure(this.getField(from.x - 1, from.y - 1).getFigure())) {
+                    ret.push(this.getField(from.x - 1, from.y - 1));
+                }
+            }
+        }
+        else {
+            if (this.getField(from.x + 1, from.y) != null && this.getField(from.x + 1, from.y).isEmpty()) {
+                ret.push(this.getField(from.x + 1, from.y));
+            }
+            if (this.getField(from.x + 1, from.y + 1) != null && !(this.getField(from.x + 1, from.y + 1).isEmpty())) {
+                if (this.isEnemyFigure(this.getField(from.x - 1, from.y + 1).getFigure())) {
+                    ret.push(this.getField(from.x - 1, from.y + 1));
+                }
+            }
+            if (this.getField(from.x + 1, from.y - 1) != null && !(this.getField(from.x + 1, from.y - 1).isEmpty())) {
+                if (this.isEnemyFigure(this.getField(from.x - 1, from.y - 1).getFigure())) {
+                    ret.push(this.getField(from.x - 1, from.y - 1));
+                }
+            }
+        }
+        return ret;
+    };
+    //public helpers
     Board.prototype.logBoard = function () {
         var print = "Player: " + (this.playerTurn == Side_1.Side.WHITE ? "White" : "Black") + "\n";
         print += "Selected: " + (this.selectedFigure != null ? "" + this.selectedFigure.x + "|" + this.selectedFigure.y : "not selected") + "\n";
@@ -281,6 +434,18 @@ var Board = (function () {
             print += '\n';
         }
         console.log(print);
+    };
+    Board.prototype.replace = function (from, to) {
+        var fig = this.getField(from.x, from.y).getFigure();
+        this.board[from.x][from.y].setFigure(null);
+        this.board[to.x][to.y].setFigure(fig);
+    };
+    //private helpers
+    Board.prototype.switchTurn = function () {
+        this.playerTurn = Side_1.Side.WHITE ? Side_1.Side.BLACK : Side_1.Side.WHITE;
+    };
+    Board.prototype.isEnemyFigure = function (figure) {
+        return this.playerTurn != figure.side;
     };
     return Board;
 }());
