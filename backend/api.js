@@ -6,7 +6,6 @@ var express = require('express');
 var app = express();
 var bodyParser = require('body-parser');
 var port = 3000;
-var Figure =require("../common/dist/Figure");
 
 
 app.use(bodyParser.urlencoded({extended:true}));

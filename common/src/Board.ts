@@ -22,6 +22,10 @@ export class Board {
     private WIDTH: number = 8;
     private HEIGHT: number = 8;
 
+    constructor() {
+        this.WIDTH=8;
+    }
+
     public initGame(): void {
 
         this.playerTurn = Side.WHITE;
@@ -183,6 +187,15 @@ export class Board {
                 break;
             case FigureType.RUNNER :
                 ret = this.getValidRunnerMoves(field);
+                break;
+            case FigureType.KING:
+                ret = this.getValidKingMoves(field);
+                break;
+            case FigureType.QUEEN:
+                ret = this.getValidQueenMoves(field);
+                break;
+            case FigureType.FARMER:
+                ret = this.getValidFarmerMoves(field);
                 break;
             default :
                 return [];
@@ -545,10 +558,10 @@ export class Board {
     }
 
     private omputeGameState(): void {
-        let king : Field = this.getKingField(this.playerTurn);
-        let checkingFields : Field[] = this.getCheckingFieldsFor(king);
+        let king: Field = this.getKingField(this.playerTurn);
+        let checkingFields: Field[] = this.getCheckingFieldsFor(king);
 
-        if (checkingFields.length<1) {
+        if (checkingFields.length < 1) {
             this.playerTurn == Side.WHITE ? this.gameState = GameState.CHECK_WHITE : this.gameState = GameState.CHECK_BLACK;
         } else {
             this.gameState = GameState.NORMAL;
@@ -559,30 +572,30 @@ export class Board {
     }
 
     private getCheckingFieldsFor(king: Field): Field[] {
-        let ret : Field[] = [];
+        let ret: Field[] = [];
 
         let horseMoves: Field[] = this.getValidHorseMoves(king);
-        ret.concat(this.getFieldsForFigureType(horseMoves,FigureType.HORSE));
+        ret.concat(this.getFieldsForFigureType(horseMoves, FigureType.HORSE));
 
-        let towerMoves : Field[] = this.getValidTowerMoves(king);
-        ret.concat(this.getFieldsForFigureType(towerMoves,FigureType.TOWER));
+        let towerMoves: Field[] = this.getValidTowerMoves(king);
+        ret.concat(this.getFieldsForFigureType(towerMoves, FigureType.TOWER));
 
-        let runnerMoves : Field[] = this.getValidRunnerMoves(king);
-        ret.concat(this.getFieldsForFigureType(runnerMoves,FigureType.RUNNER));
+        let runnerMoves: Field[] = this.getValidRunnerMoves(king);
+        ret.concat(this.getFieldsForFigureType(runnerMoves, FigureType.RUNNER));
 
-        let queenMoves : Field[] = this.getValidQueenMoves(king);
-        ret.concat(this.getFieldsForFigureType(queenMoves,FigureType.QUEEN));
+        let queenMoves: Field[] = this.getValidQueenMoves(king);
+        ret.concat(this.getFieldsForFigureType(queenMoves, FigureType.QUEEN));
 
-        let farmerMoves : Field [];
+        let farmerMoves: Field [];
 
         if (this.playerTurn == Side.WHITE) {
-            farmerMoves.push(this.getField(king.x-1,king.y-1));
-            farmerMoves.push(this.getField(king.x-1,king.y+1));
+            farmerMoves.push(this.getField(king.x - 1, king.y - 1));
+            farmerMoves.push(this.getField(king.x - 1, king.y + 1));
         } else {
-            farmerMoves.push(this.getField(king.x+1,king.y-1));
-            farmerMoves.push(this.getField(king.x+1,king.y+1));
+            farmerMoves.push(this.getField(king.x + 1, king.y - 1));
+            farmerMoves.push(this.getField(king.x + 1, king.y + 1));
         }
-        ret.concat(this.getFieldsForFigureType(farmerMoves,FigureType.FARMER));
+        ret.concat(this.getFieldsForFigureType(farmerMoves, FigureType.FARMER));
 
         return ret;
 
@@ -592,14 +605,14 @@ export class Board {
      * checks if one of the given fields contains a figure of the given figure type
      */
     private getFieldsForFigureType(fields: Field[], figureType: FigureType) {
-        let ret : Field[] = [];
+        let ret: Field[] = [];
 
         fields.forEach(field => {
-           if (field != null && !field.isEmpty()) {
-               if (field.getFigure().type == figureType && field.getFigure().side != this.playerTurn) {
-                   ret.push(field);
-               }
-           }
+            if (field != null && !field.isEmpty()) {
+                if (field.getFigure().type == figureType && field.getFigure().side != this.playerTurn) {
+                    ret.push(field);
+                }
+            }
         });
 
         return ret;
@@ -610,13 +623,17 @@ export class Board {
             for (let j = 0; j < this.board[i].length; j++) {
                 if (!(this.board[i][j].isEmpty())) {
                     if ((this.board[i][j].getFigure().type == FigureType.KING) && (this.board[i][j].getFigure().side == side)) {
-                        return this.getField(i,j);
+                        return this.getField(i, j);
                     }
                 }
             }
         }
         return null;
     }
+    public getBoard() : Field[][] {
+        return this.board;
+    }
+
 
 }
 

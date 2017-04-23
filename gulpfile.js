@@ -1,18 +1,48 @@
 var gulp = require("gulp");
-var ts = require("gulp-typescript");
-var tsProject = ts.createProject("common/tsconfig.json");
-var   exec = require('child_process').exec;
+var browserify = require("browserify");
+var source = require('vinyl-source-stream');
+var watchify = require("watchify");
+var tsify = require("tsify");
+var gutil = require("gulp-util");
+var paths = {
+    pages: ['frontend/*.html']
+};
 
-gulp.task("default", function () {
+var watchedBrowserify = watchify(browserify({
+    basedir: '.',
+    debug: true,
+    entries: [
+        'common/src/Board.ts',
+        'common/src/Field.ts',
+        'common/src/Figure.ts',
+        'common/src/FigureType.ts',
+        'common/src/GameState.ts',
+        'common/src/Side.ts',
+        'frontend/printer.ts',
+        'common/src/test.ts'
+    ],
+    cache: {},
+    packageCache: {}
+}).plugin(tsify));
 
-    exec('node backend/api.js', function (err, stdout, stderr) {
-        console.log(stdout);
-        console.log(stderr);
-        cb(err);
-    });
-
-    return tsProject.src()
-        .pipe(tsProject())
-        .js.pipe(gulp.dest("common/dist"));
+gulp.task("copy-html", function () {
+    return gulp.src(paths.pages)
+        .pipe(gulp.dest("frontend/dist"));
 });
+
+
+function bundle() {
+    return watchedBrowserify
+        .bundle()
+        .pipe(source('bundle.js'))
+        .pipe(gulp.dest("common/bundle/"));
+}
+
+gulp.task("default", ["copy-html"], bundle);
+watchedBrowserify.on("update", bundle);
+watchedBrowserify.on("log", gutil.log);
+
+function doDefault() {
+    gulp.task("default", ["copy-html"], bundle);
+}
 
