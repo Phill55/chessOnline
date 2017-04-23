@@ -165,6 +165,15 @@ export class Board {
             case FigureType.RUNNER :
                 validFields = this.getValidRunnerMoves(from);
                 break;
+            case FigureType.QUEEN :
+                validFields = this.getValidQueenMoves(from);
+                break;
+            case FigureType.KING :
+                validFields = this.getValidKingMoves(from);
+                break;
+            case FigureType.FARMER :
+                validFields = this.getValidFarmerMoves(from);
+                break;
             default :
                 return false;
         }
@@ -281,7 +290,8 @@ export class Board {
                 if (field.isEmpty()) {
                     validFields[validFields.length] = field;
                 } else {
-                    if (this.isEnemyFigure(field.getFigure())) {
+                    let enemyFigure : boolean = playerTurn != field.getFigure().side;
+                    if (enemyFigure) {
                         validFields[validFields.length] = field;
                     }
                 }

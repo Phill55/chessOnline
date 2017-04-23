@@ -43,7 +43,7 @@ function printHtmlBoard(printBoard : Board, printField:Field[][]) {
 
 
     html += "</table>";
-    document.write(html);
+    document.getElementById("content").innerHTML=html;
 }
 
 
@@ -91,6 +91,7 @@ function onFieldSelect(selectedField : Field,printBoard:Board,printField:Field[]
 
 function onMove(printBoard:Board,printField:Field[][],x,y) {
     printBoard.move(printBoard.getField(x,y));
+    printBoard.logBoard();
     printHtmlBoard(printBoard,printBoard.getBoard());
     initOnClickListener(printBoard,printBoard.getBoard());
 }
