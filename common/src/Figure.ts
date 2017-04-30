@@ -8,6 +8,7 @@ export class Figure {
     type : FigureType;
     field : Field;
     side : Side;
+    hasMoved : boolean;
 
 
     constructor(x: number,y:number,type:FigureType,field:Field,side : Side) {
@@ -16,6 +17,7 @@ export class Figure {
         this.type = type;
         this.field = field;
         this.side = side;
+        this.hasMoved = false;
     }
 
 

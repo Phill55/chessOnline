@@ -6,8 +6,7 @@ import {FigureType} from "./FigureType";
 import {Field} from "./Field";
 import {Side} from "./Side";
 import {GameState} from "./GameState";
-import {userInfo} from "os";
-import {platform} from "os";
+import {Messages} from "./Messages";
 /**
  * Created by Philipp on 19.03.2017.
  */
@@ -18,6 +17,8 @@ export class Board {
     private playerTurn: Side;
     private selectedFigure: Figure;
     private gameState: GameState;
+    private message : string;
+    private tookenFigures : Figure[] = [];
 
     private WIDTH: number = 8;
     private HEIGHT: number = 8;
@@ -131,18 +132,25 @@ export class Board {
     public move(to: Field): boolean {
         let from: Field;
         if (this.selectedFigure != null) {
-            from = this.selectedFigure.field;
+            from = this.getField(this.selectedFigure.x,this.selectedFigure.y);
         } else {
             return false;
         }
 
         if (this.isValidMove(from, to)) {
             this.board[from.x][from.y].setFigure(null);
+            this.selectedFigure.x=to.x;
+            this.selectedFigure.y=to.y;
+            this.selectedFigure.hasMoved=true;
             this.board[to.x][to.y].setFigure(this.selectedFigure);
             this.selectedFigure = null;
+            this.computeGameState();
             this.switchTurn();
+            console.log(this.gameState);
             return true;
         }
+
+        console.log(this.gameState);
         return false;
     }
 
@@ -396,15 +404,23 @@ export class Board {
 
         possibleMoves.forEach(field => {
             if (field != null) {
-                if (field.isEmpty()) {
-                    ret[ret.length] = field;
-                } else {
-                    if (!(field.getFigure().side == this.playerTurn)) {
+
+                if (!this.isCovered(field)) {
+                    if (field.isEmpty()) {
                         ret[ret.length] = field;
+                    } else {
+                        if (!(field.getFigure().side == this.playerTurn)) {
+                            ret[ret.length] = field;
+                        }
                     }
                 }
             }
         });
+
+        if (ret.length < 1) {
+            console.log("yes");
+            this.gameState = GameState.CHECKMATE;
+        }
 
         return ret;
     }
@@ -417,6 +433,12 @@ export class Board {
 
             if (this.getField(from.x - 1, from.y) != null && this.getField(from.x - 1, from.y).isEmpty()) {
                 ret.push(this.getField(from.x - 1, from.y));
+            }
+
+            if (!from.getFigure().hasMoved) {
+                if (this.getField(from.x - 2, from.y) != null && this.getField(from.x - 2, from.y).isEmpty()) {
+                    ret.push(this.getField(from.x - 2, from.y));
+                }
             }
 
             if (this.getField(from.x - 1, from.y + 1) != null && !(this.getField(from.x - 1, from.y + 1).isEmpty())) {
@@ -436,15 +458,21 @@ export class Board {
                 ret.push(this.getField(from.x + 1, from.y));
             }
 
+            if (!from.getFigure().hasMoved) {
+                if (this.getField(from.x + 2, from.y) != null && this.getField(from.x + 2, from.y).isEmpty()) {
+                    ret.push(this.getField(from.x + 2, from.y));
+                }
+            }
+
             if (this.getField(from.x + 1, from.y + 1) != null && !(this.getField(from.x + 1, from.y + 1).isEmpty())) {
-                if (this.isEnemyFigure(this.getField(from.x - 1, from.y + 1).getFigure())) {
-                    ret.push(this.getField(from.x - 1, from.y + 1));
+                if (this.isEnemyFigure(this.getField(from.x + 1, from.y + 1).getFigure())) {
+                    ret.push(this.getField(from.x + 1, from.y + 1));
                 }
             }
 
             if (this.getField(from.x + 1, from.y - 1) != null && !(this.getField(from.x + 1, from.y - 1).isEmpty())) {
-                if (this.isEnemyFigure(this.getField(from.x - 1, from.y - 1).getFigure())) {
-                    ret.push(this.getField(from.x - 1, from.y - 1));
+                if (this.isEnemyFigure(this.getField(from.x + 1, from.y - 1).getFigure())) {
+                    ret.push(this.getField(from.x + 1, from.y - 1));
                 }
             }
         }
@@ -453,6 +481,25 @@ export class Board {
         return ret;
     }
 
+    public isCovered(coveree : Field) : boolean {
+        for (let i = 0; i< this.board.length; i++)  {
+            for (let j = 0; j< this.board[i].length; j++) {
+
+                let field : Field = this.getField(i,j);
+
+                if (!field.isEmpty() && field.getFigure().side===this.playerTurn) {
+
+                    let possibleMoves : Field[] = this.getPossibleMovesFor(field);
+
+                    if (possibleMoves.indexOf(coveree)> -1); {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
 
     //public helpers
     public logBoard(): void {
@@ -501,7 +548,7 @@ export class Board {
 
         }
 
-        console.log(print);
+        //console.log(print);
 
     }
 
@@ -528,7 +575,7 @@ export class Board {
 
         }
 
-        console.log(print);
+        //console.log(print);
     }
 
     public logMeta(): void {
@@ -557,31 +604,67 @@ export class Board {
         this.board[to.x][to.y].setFigure(fig);
     }
 
+    public logGameState() : void {
+        let s = "";
+        switch (this.gameState) {
+            case GameState.NORMAL : s = "Normal"; break;
+            case GameState.CHECK_BLACK : s = "Check Black"; break;
+            case GameState.CHECK_WHITE : s = "Check White"; break;
+            case GameState.CHECKMATE : s = "Checkmate"; break;
+        }
+
+        console.log(s);
+    }
 
     //private helpers
     private switchTurn(): void {
-        this.playerTurn = Side.WHITE ? Side.BLACK : Side.WHITE;
+        this.playerTurn = this.playerTurn===Side.WHITE ? Side.BLACK : Side.WHITE;
     }
 
     private isEnemyFigure(figure: Figure): boolean {
         return this.playerTurn != figure.side;
     }
 
-    private omputeGameState(): void {
-        let king: Field = this.getKingField(this.playerTurn);
+    private computeGameState(): void {
+        let evaluatedSide = this.playerTurn == Side.WHITE ? Side.BLACK : Side.WHITE;
+        let king: Field = this.getKingField(evaluatedSide);
         let checkingFields: Field[] = this.getCheckingFieldsFor(king);
 
-        if (checkingFields.length < 1) {
-            this.playerTurn == Side.WHITE ? this.gameState = GameState.CHECK_WHITE : this.gameState = GameState.CHECK_BLACK;
+        if (checkingFields.length > 0) {
+
+            let kingMoves = this.getPossibleMovesFor(this.getKingField(evaluatedSide));
+
+            if (kingMoves.length > 1) {
+
+                if (this.isKingChecked(evaluatedSide)) {
+                    this.gameState = evaluatedSide ===Side.WHITE ? GameState.CHECK_WHITE : GameState.CHECK_BLACK;
+                } else {
+                    this.gameState = GameState.NORMAL;
+                }
+
+            } else {
+                this.gameState = GameState.CHECKMATE;
+                this.message = evaluatedSide === Side.WHITE ? Messages.BLACK_WIN : Messages.WHITE_WIN;
+            }
+
+
         } else {
             this.gameState = GameState.NORMAL;
         }
 
-        //TODO:check for checkmate
+        console.log(this.gameState);
 
     }
 
-    private getCheckingFieldsFor(king: Field): Field[] {
+    private isKingChecked(side : Side) : boolean {
+        if (side == Side.WHITE) {
+            return this.getCheckingFieldsFor(this.getKingField(Side.WHITE)).length>0;
+        } else {
+            return this.getCheckingFieldsFor(this.getKingField(Side.BLACK)).length>0;
+        }
+    }
+
+    public getCheckingFieldsFor(king: Field): Field[] {
         let ret: Field[] = [];
 
         let horseMoves: Field[] = this.getValidHorseMoves(king);
@@ -596,7 +679,7 @@ export class Board {
         let queenMoves: Field[] = this.getValidQueenMoves(king);
         ret.concat(this.getFieldsForFigureType(queenMoves, FigureType.QUEEN));
 
-        let farmerMoves: Field [];
+        let farmerMoves: Field[] = [];
 
         if (this.playerTurn == Side.WHITE) {
             farmerMoves.push(this.getField(king.x - 1, king.y - 1));
@@ -619,7 +702,7 @@ export class Board {
 
         fields.forEach(field => {
             if (field != null && !field.isEmpty()) {
-                if (field.getFigure().type == figureType && field.getFigure().side != this.playerTurn) {
+                if (field.getFigure().type == figureType && field.getFigure().side === this.playerTurn) {
                     ret.push(field);
                 }
             }
@@ -644,6 +727,17 @@ export class Board {
         return this.board;
     }
 
+    public getPlayerTurn() {
+        return this.playerTurn;
+    }
+
+    public getGameState() : GameState {
+        return this.gameState;
+    }
+
+    public getMessage() : string {
+        return this.message;
+    }
 
 }
 

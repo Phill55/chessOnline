@@ -5,6 +5,7 @@ import {Board} from "../common/src/Board";
 import {FigureType} from "../common/src/FigureType";
 import {Field} from "../common/src/Field";
 import {Side} from "../common/src/Side";
+import {GameState} from "../common/src/GameState";
 
 //TODO: make board an field variables global!!!!
 
@@ -56,7 +57,8 @@ function initOnClickListener(printBoard:Board,printField:Field[][]) {
             let fieldElement = document.getElementById(id);
             let field : Field = printBoard.getField(i,j);
             fieldElement.onclick = function(e) {
-                onFieldSelect(field,printBoard,printField);
+                if (field.getFigure() != null && (field.getFigure().side === printBoard.getPlayerTurn()))
+                onFieldSelect(field,printBoard,printBoard.getBoard());
             };
         }
     }
@@ -68,8 +70,8 @@ function onFieldSelect(selectedField : Field,printBoard:Board,printField:Field[]
     let selectedFieldElement = document.getElementById(selectedField.x+""+selectedField.y);
     selectedFieldElement.style.backgroundColor="green";
     selectedFieldElement.onclick = function(e) {
-        printHtmlBoard(printBoard,printField);
-        initOnClickListener(printBoard,printField);
+        printHtmlBoard(printBoard,printBoard.getBoard());
+        initOnClickListener(printBoard,printBoard.getBoard());
     };
 
 
@@ -79,10 +81,9 @@ function onFieldSelect(selectedField : Field,printBoard:Board,printField:Field[]
         let field : Field = fields[i];
         let id : string = field.x +""+field.y;
         let fieldElement = document.getElementById(id);
-        console.log(fieldElement);
         fieldElement.style.backgroundColor = "blue";
         fieldElement.onclick = function(e) {
-            onMove(printBoard,printField,field.x,field.y);
+            onMove(printBoard,printBoard.getBoard(),field.x,field.y);
         }
 
     }
@@ -92,6 +93,10 @@ function onFieldSelect(selectedField : Field,printBoard:Board,printField:Field[]
 function onMove(printBoard:Board,printField:Field[][],x,y) {
     printBoard.move(printBoard.getField(x,y));
     printBoard.logBoard();
+    if (printBoard.getGameState() === GameState.CHECKMATE) {
+        document.getElementById("messages").innerText = printBoard.getMessage();
+    }
+    printBoard.logGameState();
     printHtmlBoard(printBoard,printBoard.getBoard());
     initOnClickListener(printBoard,printBoard.getBoard());
 }
@@ -101,34 +106,34 @@ function getFigureTypeRepresentation(figureType,side) {
     if (side===Side.BLACK) {
         switch (figureType) {
             case FigureType.TOWER :
-                return "ressources/tower_black.png";
+                return "pics/tower_black.png";
             case FigureType.HORSE :
-                return "ressources/horse_black.PNG";
+                return "pics/horse_black.PNG";
             case FigureType.RUNNER :
-                return "ressources/runner_black.PNG";
+                return "pics/runner_black.PNG";
             case FigureType.KING:
-                return "ressources/king_black.PNG";
+                return "pics/king_black.PNG";
             case FigureType.QUEEN:
-                return "ressources/queen_black.PNG";
+                return "pics/queen_black.PNG";
             case FigureType.FARMER:
-                return "ressources/farmer_black.PNG";
+                return "pics/farmer_black.PNG";
             default :
                 return " ";
         }
     } else {
         switch (figureType) {
             case FigureType.TOWER :
-                return "ressources/tower_white.png";
+                return "pics/tower_white.png";
             case FigureType.HORSE :
-                return "ressources/horse_white.PNG";
+                return "pics/horse_white.PNG";
             case FigureType.RUNNER :
-                return "ressources/runner_white.PNG";
+                return "pics/runner_white.PNG";
             case FigureType.KING:
-                return "ressources/king_white.PNG";
+                return "pics/king_white.PNG";
             case FigureType.QUEEN:
-                return "ressources/queen_white.PNG";
+                return "pics/queen_white.PNG";
             case FigureType.FARMER:
-                return "ressources/farmer_white.PNG";
+                return "pics/farmer_white.PNG";
             default :
                 return " ";
         }
